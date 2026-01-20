@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Dino Game AUTO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    body {
+        margin: 0;
+        background: #eee;
+        text-align: center;
+        font-family: Arial;
+        user-select: none;
+    }
+    canvas {
+        display: block;
+        margin: auto;
+        border: 2px solid black;
+        background: white;
+        touch-action: manipulation;
+    }
+    .controls {
+        margin: 10px;
+    }
+    button {
+        font-size: 18px;
+        padding: 10px 18px;
+        margin: 5px;
+        border-radius: 8px;
+        border: none;
+        background: #3498db;
+        color: white;
+    }
+    button:active {
+        background: #2980b9;
+    }
+</style>
+</head>
+<body>
+
+<h2>🦖 Dino Game</h2>
+<p>แตะจอ / Space = กระโดด</p>
+
+<div class="controls">
+    <button id="autoBtn">AUTO: OFF</button>
+</div>
+
+<canvas id="game" width="800" height="300"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const autoBtn = document.getElementById("autoBtn");
+
+let dino, obstacles, gravity, score, speed, gameOver;
+let jumpCount = 0;
+const maxJump = 2;
+let autoPlay = false;
+
+/* ===== RESET ===== */
+function resetGame() {
+    dino = { x: 60, y: 220, w: 40, h: 40, vy: 0 };
+    obstacles = [];
+    gravity = 0.8;
+    score = 0;
+    speed = 6;
+    gameOver = false;
+    jumpCount = 0;
+}
+resetGame();
+
+/* ===== JUMP ===== */
+function jump() {
+    if (gameOver) {
+        resetGame();
+        return;
+    }
+    if (jumpCount < maxJump) {
+        dino.vy = -15;
+        jumpCount++;
+    }
+}
+
+/* ===== INPUT (KEYBOARD) ===== */
+document.addEventListener("keydown", e => {
+    if (e.code === "Space") {
+        e.preventDefault();
+        jump();
+    }
+});
+
+/* ===== INPUT (TOUCH) ===== */
+canvas.addEventListener("touchstart", e => {
+    e.preventDefault();
+    jump();
+});
+
+/* ===== AUTO BUTTON ===== */
+autoBtn.onclick = () => {
+    autoPlay = !autoPlay;
+    autoBtn.textContent = "AUTO: " + (autoPlay ? "ON" : "OFF");
+};
+
+/* ===== OBSTACLES ===== */
+function spawnObstacle() {
+    if (obstacles.length > 0) {
+        let last = obstacles[obstacles.length - 1];
+        if (canvas.width - last.x < 260) return;
+    }
+
+    if (Math.random() < 0.007) {
+        obstacles.push({
+            x: canvas.width,
+            y: 220,
+            w: 30,
+            h: 40
+        });
+    }
+}
+
+/* ===== AUTO AI ===== */
+function autoJumpAI() {
+    if (!autoPlay || gameOver) return;
+
+    let next = obstacles.find(o => o.x + o.w > dino.x);
+    if (!next) return;
+
+    let distance = next.x - dino.x;
+    if (distance < 140 && dino.y >= 220) {
+        jump();
+    }
+}
+
+/* ===== UPDATE ===== */
+function update() {
+    if (gameOver) {
+        if (autoPlay) resetGame();
+        return;
+    }
+
+    autoJumpAI();
+
+    dino.vy += gravity;
+    dino.y += dino.vy;
+
+    if (dino.y >= 220) {
+        dino.y = 220;
+        dino.vy = 0;
+        jumpCount = 0;
+    }
+
+    obstacles.forEach(o => o.x -= speed);
+    obstacles = obstacles.filter(o => o.x + o.w > 0);
+
+    spawnObstacle();
+
+    for (let o of obstacles) {
+        if (
+            dino.x < o.x + o.w &&
+            dino.x + dino.w > o.x &&
+            dino.y < o.y + o.h &&
+            dino.y + dino.h > o.y
+        ) {
+            gameOver = true;
+        }
+    }
+
+    score++;
+    speed = 6 + Math.floor(score / 400);
+}
+
+/* ===== DRAW ===== */
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // พื้น
+    ctx.fillStyle = "#555";
+    ctx.fillRect(0, 260, canvas.width, 5);
+
+    // Dino
+    ctx.fillStyle = "#2ecc71";
+    ctx.fillRect(dino.x, dino.y, 28, 40);
+    ctx.fillRect(dino.x + 26, dino.y + 6, 18, 20);
+
+    ctx.fillStyle = "#000";
+    ctx.fillRect(dino.x + 38, dino.y + 14, 3, 3);
+
+    ctx.fillStyle = "#2ecc71";
+    ctx.fillRect(dino.x + 4, dino.y + 38, 8, 12);
+    ctx.fillRect(dino.x + 16, dino.y + 38, 8, 12);
+
+    // Cactus
+    obstacles.forEach(o => {
+        ctx.fillStyle = "#1e8449";
+        ctx.fillRect(o.x + 10, o.y, 12, o.h);
+        ctx.fillRect(o.x + 2, o.y + 12, 8, 14);
+        ctx.fillRect(o.x + 22, o.y + 18, 8, 14);
+    });
+
+    ctx.fillStyle = "#000";
+    ctx.font = "18px Arial";
+    ctx.fillText("Score: " + score, 20, 30);
+    ctx.fillText("AUTO: " + (autoPlay ? "ON" : "OFF"), 20, 55);
+
+    if (gameOver) {
+        ctx.font = "40px Arial";
+        ctx.fillText("GAME OVER", 260, 150);
+    }
+}
+
+/* ===== LOOP ===== */
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>
